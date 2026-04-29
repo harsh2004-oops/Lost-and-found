@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#3730a3" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lost & Found" />
+  <meta name="description" content="Report and manage lost or found items easily." />
+  <title>Lost & Found</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --indigo: #4338ca;
+      --indigo-dark: #3730a3;
+      --indigo-light: #e0e7ff;
+      --red: #ef4444;
+      --red-light: #fee2e2;
+      --green: #22c55e;
+      --green-light: #dcfce7;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 4px 20px rgba(67,56,202,0.10);
+      --radius: 16px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app {
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ─── Header ─── */
+    header {
+      background: linear-gradient(135deg, var(--indigo-dark) 0%, var(--indigo) 100%);
+      color: #fff;
+      padding: 52px 20px 0;
+      flex-shrink: 0;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .app-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .app-subtitle {
+      font-size: 11px;
+      opacity: 0.65;
+      margin-top: 2px;
+    }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    /* Search */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 14px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--indigo);
+      width: 18px; height: 18px;
+    }
+    #searchInput {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    }
+    #searchInput::placeholder { color: #94a3b8; }
+
+    /* Filter chips */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      padding-bottom: 18px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .filter-row::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0;
+      padding: 7px 18px;
+      border-radius: 30px;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      color: rgba(255,255,255,0.75);
+      background: transparent;
+      transition: all .2s;
+      font-family: inherit;
+    }
+    .chip.active-all  { background: #fff; color: var(--indigo-dark); border-color: #fff; }
+    .chip.active-lost { background: var(--red-light); color: var(--red); border-color: var(--red-light); }
+    .chip.active-found { background: var(--green-light); color: #16a34a; border-color: var(--green-light); }
+
+    /* ─── Content ─── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 20px 16px 100px;
+    }
+
+    /* Empty state */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      padding-top: 60px;
+      animation: fadeIn .4s ease;
+    }
+    .empty-icon { font-size: 64px; opacity: .25; }
+    .empty h3 { font-size: 18px; color: var(--muted); font-weight: 600; }
+    .empty p  { font-size: 13px; color: #94a3b8; }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      animation: slideUp .3s ease both;
+    }
+    .card:active { transform: scale(0.98); }
+    .card-inner {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      gap: 14px;
+    }
+    .card-icon {
+      width: 50px; height: 50px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .icon-lost  { background: var(--red-light); }
+    .icon-found { background: var(--green-light); }
+    .card-info { flex: 1; min-width: 0; }
+    .card-title {
+      font-weight: 700;
+      font-size: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-loc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .badge {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .badge-lost  { background: var(--red-light); color: var(--red); }
+    .badge-found { background: var(--green-light); color: #16a34a; }
+
+    /* ─── FAB ─── */
+    .fab {
+      position: fixed;
+      bottom: 28px;
+      right: 50%;
+      transform: translateX(50%);
+      max-width: 480px;
+      width: calc(100% - 32px);
+      background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-dark) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(67,56,202,0.35);
+      transition: transform .15s, box-shadow .15s;
+      z-index: 50;
+    }
+    .fab:active { transform: translateX(50%) scale(0.97); }
+
+    /* ─── Modal ─── */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; animation: fadeIn .2s ease; }
+    .modal {
+      background: var(--card);
+      border-radius: 24px 24px 0 0;
+      padding: 0 20px 40px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 92vh;
+      overflow-y: auto;
+      animation: slideModal .3s cubic-bezier(.32,0,.67,0) both;
+    }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: var(--border);
+      border-radius: 4px;
+      margin: 12px auto 20px;
+    }
+    .modal-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    /* Form */
+    .field { margin-bottom: 14px; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--indigo);
+    }
+    textarea { resize: none; height: 80px; }
+
+    /* Type toggle */
+    .type-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .type-btn {
+      padding: 13px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .type-btn.selected-lost  { border-color: var(--red);   background: var(--red-light);   color: var(--red); }
+    .type-btn.selected-found { border-color: var(--green); background: var(--green-light); color: #16a34a; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-dark) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 6px 20px rgba(67,56,202,0.3);
+      transition: transform .15s;
+    }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* ─── Detail Modal ─── */
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .detail-icon {
+      width: 64px; height: 64px;
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .detail-title { font-size: 22px; font-weight: 700; }
+    .detail-badge { margin-top: 6px; display: inline-block; }
+
+    .detail-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-row:last-of-type { border-bottom: none; }
+    .detail-row-icon { font-size: 18px; margin-top: 1px; }
+    .detail-row-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .detail-row-val { font-size: 15px; font-weight: 500; margin-top: 2px; }
+
+    .btn-delete {
+      width: 100%;
+      padding: 15px;
+      background: var(--red-light);
+      color: var(--red);
+      border: none;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: transform .15s;
+    }
+    .btn-delete:active { transform: scale(0.98); }
+    .btn-close {
+      position: absolute;
+      top: 16px; right: 20px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%; transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s, transform .3s;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+    /* Install banner */
+    #installBanner {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: linear-gradient(90deg, #1e293b, #334155);
+      color: #fff;
+      padding: 12px 16px;
+      font-size: 13px;
+      z-index: 200;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    #installBanner.show { display: flex; }
+    #installBanner span { flex: 1; line-height: 1.4; }
+    #installBtn {
+      background: var(--indigo);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #dismissBanner {
+      background: none; border: none; color: #94a3b8;
+      font-size: 18px; cursor: pointer; padding: 0 4px;
+    }
+
+    /* Animations */
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideModal { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    .item-count {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+      text-align: right;
+      padding-right: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Install Banner -->
+<div id="installBanner">
+  <span>📱 Install <strong>Lost & Found</strong> on your home screen for the best experience!</span>
+  <button id="installBtn">Install</button>
+  <button id="dismissBanner">✕</button>
+</div>
+
+<div id="app">
+  <header>
+    <div class="header-top">
+      <div>
+        <div class="app-title">Lost &amp; Found</div>
+        <div class="app-subtitle">B2 — 46, 47, 48, 49</div>
+      </div>
+      <div class="logo-icon">🔍</div>
+    </div>
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Search by title or location…" />
+    </div>
+    <div class="filter-row">
+      <button class="chip active-all" data-filter="all">✓ All</button>
+      <button class="chip" data-filter="lost">🔴 Lost</button>
+      <button class="chip" data-filter="found">🟢 Found</button>
+    </div>
+  </header>
+
+  <div class="content" id="content">
+    <div class="item-count" id="itemCount"></div>
+    <div id="list"></div>
+  </div>
+
+  <button class="fab" id="fabBtn">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Report Item
+  </button>
+</div>
+
+<!-- Add Item Modal -->
+<div class="modal-backdrop" id="addModal">
+  <div class="modal" style="position:relative;">
+    <button class="btn-close" id="closeAdd">✕</button>
+    <div class="modal-handle"></div>
+    <div class="modal-title">Report an Item</div>
+
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="f-title" placeholder="e.g. Blue backpack" />
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea id="f-desc" placeholder="Describe the item…"></textarea>
+    </div>
+    <div class="field">
+      <label>Location</label>
+      <input type="text" id="f-loc" placeholder="Where was it lost / found?" />
+    </div>
+    <div class="field">
+      <label>Contact</label>
+      <input type="text" id="f-contact" placeholder="Phone number or email" />
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <div class="type-toggle">
+        <button class="type-btn selected-lost" data-type="lost" id="typeLost">🔴 Lost</button>
+        <button class="type-btn" data-type="found" id="typeFound">🟢 Found</button>
+      </div>
+    </div>
+    <button class="btn-submit" id="submitBtn">Submit Report</button>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-backdrop" id="detailModal">
+  <div class="modal" style="position:relative;" id="detailContent">
+    <button class="btn-close" id="closeDetail">✕</button>
+    <div class="modal-handle"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Data ──────────────────────────────────────────────────────────
+  let items = JSON.parse(localStorage.getItem('lf_items') || '[]');
+  let filter = 'all';
+  let search = '';
+  let selectedType = 'lost';
+  let currentItemId = null;
+
+  function save() { localStorage.setItem('lf_items', JSON.stringify(items)); }
+
+  // ── Render ────────────────────────────────────────────────────────
+  function render() {
+    const q = search.toLowerCase();
+    const filtered = items.filter(it => {
+      const matchF = filter === 'all' || it.type === filter;
+      const matchS = !q || it.title.toLowerCase().includes(q) || it.location.toLowerCase().includes(q);
+      return matchF && matchS;
+    });
+
+    const list = document.getElementById('list');
+    const count = document.getElementById('itemCount');
+
+    count.textContent = filtered.length ? `${filtered.length} item${filtered.length !== 1 ? 's' : ''}` : '';
+
+    if (!filtered.length) {
+      list.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">${items.length ? '🔎' : '📭'}</div>
+          <h3>${items.length ? 'No matches found' : 'No items yet'}</h3>
+          <p>${items.length ? 'Try a different search or filter' : 'Tap "Report Item" to get started'}</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((it, i) => `
+      <div class="card" onclick="openDetail('${it.id}')" style="animation-delay:${i*40}ms">
+        <div class="card-inner">
+          <div class="card-icon ${it.type === 'lost' ? 'icon-lost' : 'icon-found'}">
+            ${it.type === 'lost' ? '🔍' : '✅'}
+          </div>
+          <div class="card-info">
+            <div class="card-title">${escHtml(it.title)}</div>
+            <div class="card-loc">📍 ${escHtml(it.location)}</div>
+          </div>
+          <span class="badge badge-${it.type}">${it.type.toUpperCase()}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Filter chips ──────────────────────────────────────────────────
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filter = btn.dataset.filter;
+      document.querySelectorAll('.chip').forEach(c => c.className = 'chip');
+      btn.classList.add(`active-${filter}`);
+      render();
+    });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    search = e.target.value;
+    render();
+  });
+
+  // ── Add modal ─────────────────────────────────────────────────────
+  document.getElementById('fabBtn').addEventListener('click', () => {
+    document.getElementById('addModal').classList.add('open');
+  });
+  document.getElementById('closeAdd').addEventListener('click', closeAdd);
+  document.getElementById('addModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('addModal')) closeAdd();
+  });
+
+  function closeAdd() {
+    document.getElementById('addModal').classList.remove('open');
+    ['f-title','f-desc','f-loc','f-contact'].forEach(id => document.getElementById(id).value = '');
+    setType('lost');
+  }
+
+  // Type toggle
+  document.getElementById('typeLost').addEventListener('click', () => setType('lost'));
+  document.getElementById('typeFound').addEventListener('click', () => setType('found'));
+
+  function setType(t) {
+    selectedType = t;
+    document.getElementById('typeLost').className  = 'type-btn' + (t === 'lost'  ? ' selected-lost'  : '');
+    document.getElementById('typeFound').className = 'type-btn' + (t === 'found' ? ' selected-found' : '');
+  }
+
+  // Submit
+  document.getElementById('submitBtn').addEventListener('click', () => {
+    const title   = document.getElementById('f-title').value.trim();
+    const desc    = document.getElementById('f-desc').value.trim();
+    const loc     = document.getElementById('f-loc').value.trim();
+    const contact = document.getElementById('f-contact').value.trim();
+    if (!title || !desc || !loc || !contact) { showToast('⚠️ Please fill all fields'); return; }
+    items.unshift({ id: Date.now().toString(), title, description: desc, location: loc, contact, type: selectedType });
+    save(); render(); closeAdd();
+    showToast('✅ Item reported successfully!');
+  });
+
+  // ── Detail modal ──────────────────────────────────────────────────
+  function openDetail(id) {
+    const it = items.find(i => i.id === id);
+    if (!it) return;
+    currentItemId = id;
+    const isLost = it.type === 'lost';
+    document.getElementById('detailContent').innerHTML = `
+      <button class="btn-close" id="closeDetail">✕</button>
+      <div class="modal-handle"></div>
+      <div class="detail-header">
+        <div class="detail-icon ${isLost ? 'icon-lost' : 'icon-found'}">${isLost ? '🔍' : '✅'}</div>
+        <div>
+          <div class="detail-title">${escHtml(it.title)}</div>
+          <span class="badge badge-${it.type} detail-badge">${it.type.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">📝</div>
+        <div><div class="detail-row-label">Description</div><div class="detail-row-val">${escHtml(it.description)}</div></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">📍</div>
+        <div><div class="detail-row-label">Location</div><div class="detail-row-val">${escHtml(it.location)}</div></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">📞</div>
+        <div><div class="detail-row-label">Contact</div><div class="detail-row-val">${escHtml(it.contact)}</div></div>
+      </div>
+      <button class="btn-delete" onclick="deleteItem()">🗑 Delete Report</button>`;
+    document.getElementById('closeDetail').addEventListener('click', closeDetail);
+    document.getElementById('detailModal').classList.add('open');
+  }
+
+  function closeDetail() { document.getElementById('detailModal').classList.remove('open'); }
+  document.getElementById('detailModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('detailModal')) closeDetail();
+  });
+
+  function deleteItem() {
+    items = items.filter(i => i.id !== currentItemId);
+    save(); render(); closeDetail();
+    showToast('🗑 Item deleted');
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // ── PWA Install ───────────────────────────────────────────────────
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBanner').classList.add('show');
+    document.querySelector('header').style.paddingTop = '96px';
+  });
+
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+    document.querySelector('header').style.paddingTop = '';
+    if (outcome === 'accepted') showToast('🎉 App installed!');
+  });
+
+  document.getElementById('dismissBanner').addEventListener('click', () => {
+    document.getElementById('installBanner').classList.remove('show');
+    document.querySelector('header').style.paddingTop = '';
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────
+  render();
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
